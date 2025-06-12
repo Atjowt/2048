@@ -28,19 +28,20 @@ static float easeOutCubic(float t) {
 }
 
 static Color getColor(int tile) {
-	switch (tile) {
-		case 2: return ORANGE;
-		case 4: return YELLOW;
-		case 8: return GREEN;
-		case 16: return BLUE;
-		case 32: return PURPLE;
-		case 64: return PINK;
-		case 128: return LIME;
-		case 256: return SKYBLUE;
-		case 512: return DARKBLUE;
-		case 1024: return DARKGREEN;
-		case 2048: return GOLD;
-	}
+	return ColorFromHSV(tile * 10.0 * PI, 0.3, 0.9);
+	// switch (tile) {
+	// 	case 2: return ORANGE;
+	// 	case 4: return YELLOW;
+	// 	case 8: return GREEN;
+	// 	case 16: return BLUE;
+	// 	case 32: return PURPLE;
+	// 	case 64: return PINK;
+	// 	case 128: return LIME;
+	// 	case 256: return SKYBLUE;
+	// 	case 512: return DARKBLUE;
+	// 	case 1024: return DARKGREEN;
+	// 	case 2048: return GOLD;
+	// }
 }
 
 bool checkIfAnimating(float t[SIZE][SIZE]) {
@@ -307,9 +308,13 @@ int main(void) {
 	int screenHeight = 512;
 
 	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+	SetConfigFlags(FLAG_MSAA_4X_HINT);
 	InitWindow(screenWidth, screenHeight, "2048");
+	SetWindowMinSize(256, 256);
 
-	Color backgroundColor = { 128, 128, 128, 255 };
+	Font font = LoadFontEx("Jua-Regular.ttf", 512, NULL, 0);
+
+	Color backgroundColor = ColorFromHSV(240.0, 0.2, 0.2);
 	float animSpeed = 4.0;
 
 	while (!WindowShouldClose()) {
@@ -422,18 +427,21 @@ int main(void) {
 				};
 				// DrawRectangleV(pos, size, color);
 				const char* text = TextFormat("%d", board[y][x]);
-				float textHeight = fminf(size.x, size.y) * 0.6;
-				float textWidth = MeasureText(text, textHeight);
+				float fontSize = fminf(size.x, size.y) * 0.4;
+				Vector2 textSize = MeasureTextEx(font, text, fontSize, 0.0);
 				Vector2 textPos = {
-					pos.x + 0.5 * (size.x - textWidth),
-					pos.y + 0.5 * (size.y - textHeight),
+					pos.x + 0.5 * (size.x - textSize.x),
+					pos.y + 0.5 * (size.y - textSize.y),
 				};
 				DrawRectangleRounded(rect, 0.4, 8, color);
-				DrawText(text, textPos.x, textPos.y, textHeight, WHITE);
+				DrawTextEx(font, text, textPos, fontSize, 0.0, WHITE);
 			}
 		}
+		DrawFPS(4, 4);
 		EndDrawing();
 	}
+
+	UnloadFont(font);
 
 	CloseWindow();
 
