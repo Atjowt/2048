@@ -34,7 +34,12 @@ static Color getColor(int tile) {
 		case 8: return GREEN;
 		case 16: return BLUE;
 		case 32: return PURPLE;
-		// ...
+		case 64: return PINK;
+		case 128: return LIME;
+		case 256: return SKYBLUE;
+		case 512: return DARKBLUE;
+		case 1024: return DARKGREEN;
+		case 2048: return GOLD;
 	}
 }
 
@@ -138,18 +143,15 @@ static void slideBoardRight(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE
 		for (int x = SIZE - 1; x >= 0; x--) {
 			if (boardOut[y][x] != 0) {
 				if (lastValue == 0) {
-					// First tile in the row
 					lastValue = boardOut[y][x];
 					lastX = x;
 				} else if (lastValue == boardOut[y][x]) {
-					// Merge tiles
 					boardOut[y][writeIndex] = lastValue * 2;
 					xOut[y][lastX] = writeIndex;
 					xOut[y][x] = writeIndex;
 					lastValue = 0;
 					writeIndex--;
 				} else {
-					// Place tile without merge
 					boardOut[y][writeIndex] = lastValue;
 					xOut[y][lastX] = writeIndex;
 					lastValue = boardOut[y][x];
@@ -190,11 +192,9 @@ static void slideBoardDown(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE]
 		for (int y = SIZE - 1; y >= 0; y--) {
 			if (boardOut[y][x] != 0) {
 				if (lastValue == 0) {
-					// First tile in the row
 					lastValue = boardOut[y][x];
 					lastY = y;
 				} else if (lastValue == boardOut[y][x]) {
-					// Merge tiles
 					boardOut[writeIndex][x] = lastValue * 2;
 					yOut[lastY][x] = writeIndex;
 					yOut[y][x] = writeIndex;
@@ -310,8 +310,7 @@ int main(void) {
 	InitWindow(screenWidth, screenHeight, "2048");
 
 	Color backgroundColor = { 128, 128, 128, 255 };
-	float animSizeSpeed = 4.0;
-	float animPosSpeed = 4.0;
+	float animSpeed = 4.0;
 
 	while (!WindowShouldClose()) {
 
@@ -350,14 +349,16 @@ int main(void) {
 					case MOVE_UP: slideBoard(board, DIR_UP, boardNext, xNext, yNext); break;
 					case MOVE_DOWN: slideBoard(board, DIR_DOWN, boardNext, xNext, yNext); break;
 				}
-				if (boardCmp(board, boardNext) != 0) {
-					for (int y = 0; y < SIZE; y++) {
-						for (int x = 0; x < SIZE; x++) {
-							tAnimPos[y][x] = 0.0;
-							// tAnimSize[y][x] = 0.0;
+				for (int y = 0; y < SIZE; y++) {
+					for (int x = 0; x < SIZE; x++) {
+						tAnimPos[y][x] = 0.0;
+						if (!(xNext[y][x] == x && yNext[y][x] == y) && board[yNext[y][x]][xNext[y][x]] == board[y][x]) {
+							tAnimSize[y][x] = 0.2;
+						}
+						if (boardNext[y][x] != board[y][x]) {
+							resultPending = true;
 						}
 					}
-					resultPending = true;
 				}
 				requestedMove = MOVE_NONE;
 			}
@@ -385,8 +386,8 @@ int main(void) {
 
 		for (int y = 0; y < SIZE; y++) {
 			for (int x = 0; x < SIZE; x++) {
-				tAnimSize[y][x] = Clamp(tAnimSize[y][x] + animSizeSpeed * deltaTime, 0.0, 1.0);
-				tAnimPos[y][x] = Clamp(tAnimPos[y][x] + animPosSpeed * deltaTime, 0.0, 1.0);
+				tAnimSize[y][x] = Clamp(tAnimSize[y][x] + animSpeed * deltaTime, 0.0, 1.0);
+				tAnimPos[y][x] = Clamp(tAnimPos[y][x] + animSpeed * deltaTime, 0.0, 1.0);
 			}
 		}
 
@@ -403,12 +404,32 @@ int main(void) {
 				if (board[y][x] == 0) continue;
 				Vector2 start = { x, y };
 				Vector2 end = { xNext[y][x], yNext[y][x] };
-				Vector2 pos = Vector2Multiply(Vector2Lerp(start, end, easeOutCubic(tAnimPos[y][x])), tileSize);
 				// Vector2 pos = Vector2Multiply(end, tileSize);
-				Vector2 size = Vector2Scale(Vector2Scale(tileSize, 0.9), easeOutCubic(tAnimSize[y][x]));
+				float scale = easeOutCubic(tAnimSize[y][x]);
+				float slide = easeOutCubic(tAnimPos[y][x]);
+				Vector2 offset = {
+					tileWidth * (1.0 - scale) * 0.5,
+					tileHeight * (1.0 - scale) * 0.5,
+				};
+				Vector2 pos = Vector2Add(Vector2Multiply(Vector2Lerp(start, end, slide), tileSize), offset);
+				Vector2 size = Vector2Scale(tileSize, scale);
 				Color color = getColor(board[y][x]);
-				DrawRectangleV(pos, size, color);
-				DrawText(TextFormat("%d", board[y][x]), pos.x, pos.y, size.y, WHITE);
+				Rectangle rect = {
+					.x = pos.x,
+					.y = pos.y,
+					.width = size.x,
+					.height = size.y,
+				};
+				// DrawRectangleV(pos, size, color);
+				const char* text = TextFormat("%d", board[y][x]);
+				float textHeight = fminf(size.x, size.y) * 0.6;
+				float textWidth = MeasureText(text, textHeight);
+				Vector2 textPos = {
+					pos.x + 0.5 * (size.x - textWidth),
+					pos.y + 0.5 * (size.y - textHeight),
+				};
+				DrawRectangleRounded(rect, 0.4, 8, color);
+				DrawText(text, textPos.x, textPos.y, textHeight, WHITE);
 			}
 		}
 		EndDrawing();
