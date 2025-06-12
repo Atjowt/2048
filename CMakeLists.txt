@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.10..3.50)
+project(2048 LANGUAGES C)
+set(CMAKE_C_STANDARD 99)
+set(CMAKE_GENERATE_COMPILE_COMMANDS ON)
+find_package(glfw3 REQUIRED)
+add_executable(2048 lib/libraylib.a src/main.c)
+target_include_directories(2048 PRIVATE include)
+target_link_directories(2048 PRIVATE lib)
+target_link_libraries(2048 PRIVATE m glfw raylib)
+
