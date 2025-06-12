@@ -55,28 +55,6 @@ bool checkIfAnimating(float t[SIZE][SIZE]) {
 	return false;
 }
 
-static void boardCopy(const int board[SIZE][SIZE], int copy[SIZE][SIZE]) {
-	for (int y = 0; y < SIZE; y++) {
-		for (int x = 0; x < SIZE; x++) {
-			copy[y][x] = board[y][x];
-		}
-	}
-}
-
-static int boardCmp(const int board[SIZE][SIZE], const int other[SIZE][SIZE]) {
-	for (int y = 0; y < SIZE; y++) {
-		for (int x = 0; x < SIZE; x++) {
-			if (board[y][x] < other[y][x]) {
-				return -1;
-			}
-			if (board[y][x] > other[y][x]) {
-				return 1;
-			}
-		}
-	}
-	return 0;
-}
-
 static void slideBoardLeft(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
 
 	for (int y = 0; y < SIZE; y++) {
@@ -292,7 +270,7 @@ int main(void) {
 	int xNext[SIZE][SIZE];
 	int yNext[SIZE][SIZE];
 	float tAnimPos[SIZE][SIZE];
-	float tAnimSize[SIZE][SIZE];
+	float tAnimSpawn[SIZE][SIZE];
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
 			board[y][x] = 0;
@@ -300,7 +278,7 @@ int main(void) {
 			xNext[y][x] = x;
 			yNext[y][x] = y;
 			tAnimPos[y][x] = 0.0;
-			tAnimSize[y][x] = 0.0;
+			tAnimSpawn[y][x] = 0.0;
 		}
 	}
 
@@ -312,7 +290,7 @@ int main(void) {
 	InitWindow(screenWidth, screenHeight, "2048");
 	SetWindowMinSize(256, 256);
 
-	Font font = LoadFontEx("Jua-Regular.ttf", 512, NULL, 0);
+	Font font = LoadFontEx("Jua-Regular.ttf", 300, NULL, 0);
 
 	Color backgroundColor = ColorFromHSV(240.0, 0.2, 0.2);
 	float animSpeed = 4.0;
@@ -326,7 +304,7 @@ int main(void) {
 				y = GetRandomValue(0, SIZE - 1);
 			} while (board[y][x] != 0);
 			board[y][x] = GetRandomValue(1, 10) < 10 ? 2 : 4;
-			tAnimSize[y][x] = 0.0;
+			tAnimSpawn[y][x] = 0.0;
 			tilesToSpawn -= 1;
 		}
 
@@ -343,7 +321,7 @@ int main(void) {
 				for (int y = 0; y < SIZE; y++) {
 					for (int x = 0; x < SIZE; x++) {
 						tAnimPos[y][x] = 1.0;
-						tAnimSize[y][x] = 1.0;
+						tAnimSpawn[y][x] = 1.0;
 					}
 				}
 			} else {
@@ -357,9 +335,6 @@ int main(void) {
 				for (int y = 0; y < SIZE; y++) {
 					for (int x = 0; x < SIZE; x++) {
 						tAnimPos[y][x] = 0.0;
-						if (!(xNext[y][x] == x && yNext[y][x] == y) && board[yNext[y][x]][xNext[y][x]] == board[y][x]) {
-							tAnimSize[y][x] = 0.2;
-						}
 						if (boardNext[y][x] != board[y][x]) {
 							resultPending = true;
 						}
@@ -369,8 +344,7 @@ int main(void) {
 			}
 		}
 
-		isAnimating = checkIfAnimating(tAnimPos) || checkIfAnimating(tAnimSize);
-		// isAnimating = false;
+		isAnimating = checkIfAnimating(tAnimPos) || checkIfAnimating(tAnimSpawn);
 
 		if (!isAnimating && resultPending) {
 			for (int y = 0; y < SIZE; y++) {
@@ -391,7 +365,7 @@ int main(void) {
 
 		for (int y = 0; y < SIZE; y++) {
 			for (int x = 0; x < SIZE; x++) {
-				tAnimSize[y][x] = Clamp(tAnimSize[y][x] + animSpeed * deltaTime, 0.0, 1.0);
+				tAnimSpawn[y][x] = Clamp(tAnimSpawn[y][x] + animSpeed * deltaTime, 0.0, 1.0);
 				tAnimPos[y][x] = Clamp(tAnimPos[y][x] + animSpeed * deltaTime, 0.0, 1.0);
 			}
 		}
@@ -410,7 +384,7 @@ int main(void) {
 				Vector2 start = { x, y };
 				Vector2 end = { xNext[y][x], yNext[y][x] };
 				// Vector2 pos = Vector2Multiply(end, tileSize);
-				float scale = easeOutCubic(tAnimSize[y][x]);
+				float scale = easeOutCubic(tAnimSpawn[y][x]);
 				float slide = easeOutCubic(tAnimPos[y][x]);
 				Vector2 offset = {
 					tileWidth * (1.0 - scale) * 0.5,
@@ -418,7 +392,8 @@ int main(void) {
 				};
 				Vector2 pos = Vector2Add(Vector2Multiply(Vector2Lerp(start, end, slide), tileSize), offset);
 				Vector2 size = Vector2Scale(tileSize, scale);
-				Color color = getColor(board[y][x]);
+				int value = board[y][x];
+				Color color = getColor(value);
 				Rectangle rect = {
 					.x = pos.x,
 					.y = pos.y,
@@ -426,8 +401,8 @@ int main(void) {
 					.height = size.y,
 				};
 				// DrawRectangleV(pos, size, color);
-				const char* text = TextFormat("%d", board[y][x]);
-				float fontSize = fminf(size.x, size.y) * 0.4;
+				const char* text = TextFormat("%d", value);
+				float fontSize = fminf(size.x, size.y) * 0.36;
 				Vector2 textSize = MeasureTextEx(font, text, fontSize, 0.0);
 				Vector2 textPos = {
 					pos.x + 0.5 * (size.x - textSize.x),
