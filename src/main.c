@@ -71,7 +71,8 @@ static int boardCmp(const int board[SIZE][SIZE], const int other[SIZE][SIZE]) {
 	return 0;
 }
 
-static void slideBoardUp(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
+static void slideBoardLeft(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
+
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
 			boardOut[y][x] = board[y][x];
@@ -79,28 +80,99 @@ static void slideBoardUp(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], 
 			yOut[y][x] = y;
 		}
 	}
-	for (int x = 0; x < SIZE; x++) {
-		for (int b = 0; b < SIZE; b++) {
-			if (boardOut[b][x] == 0) continue;
-			for (int t = b - 1; t >= 0; --t) {
-				if (boardOut[t][x] == 0) {
-					yOut[b][x] = t;
-				} else if (boardOut[t][x] == boardOut[b][x]) {
-					yOut[b][x] = t;
-					boardOut[b][x] *= 2;
-					break;
+
+	for (int y = 0; y < SIZE; y++) {
+		int writeIndex = 0;
+		int lastValue = 0;
+		int lastX = -1;
+
+		for (int x = 0; x < SIZE; x++) {
+			if (boardOut[y][x] != 0) {
+				if (lastValue == 0) {
+					lastValue = boardOut[y][x];
+					lastX = x;
+				} else if (lastValue == boardOut[y][x]) {
+					boardOut[y][writeIndex] = lastValue * 2;
+					xOut[y][lastX] = writeIndex;
+					xOut[y][x] = writeIndex;
+					lastValue = 0;
+					writeIndex++;
 				} else {
-					break;
+					boardOut[y][writeIndex] = lastValue;
+					xOut[y][lastX] = writeIndex;
+					lastValue = boardOut[y][x];
+					lastX = x;
+					writeIndex++;
 				}
 			}
-			int temp = boardOut[b][x];
-			boardOut[b][x] = 0;
-			boardOut[yOut[b][x]][xOut[b][x]] = temp;
+		}
+
+		if (lastValue != 0) {
+			boardOut[y][writeIndex] = lastValue;
+			xOut[y][lastX] = writeIndex;
+			writeIndex++;
+		}
+
+		for (int x = writeIndex; x < SIZE; x++) {
+			boardOut[y][x] = 0;
+		}
+	}
+}
+
+static void slideBoardRight(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
+
+	for (int y = 0; y < SIZE; y++) {
+		for (int x = 0; x < SIZE; x++) {
+			boardOut[y][x] = board[y][x];
+			xOut[y][x] = x;
+			yOut[y][x] = y;
+		}
+	}
+
+	for (int y = 0; y < SIZE; y++) {
+
+		int writeIndex = SIZE - 1;
+		int lastValue = 0;
+		int lastX = -1;
+
+		for (int x = SIZE - 1; x >= 0; x--) {
+			if (boardOut[y][x] != 0) {
+				if (lastValue == 0) {
+					// First tile in the row
+					lastValue = boardOut[y][x];
+					lastX = x;
+				} else if (lastValue == boardOut[y][x]) {
+					// Merge tiles
+					boardOut[y][writeIndex] = lastValue * 2;
+					xOut[y][lastX] = writeIndex;
+					xOut[y][x] = writeIndex;
+					lastValue = 0;
+					writeIndex--;
+				} else {
+					// Place tile without merge
+					boardOut[y][writeIndex] = lastValue;
+					xOut[y][lastX] = writeIndex;
+					lastValue = boardOut[y][x];
+					lastX = x;
+					writeIndex--;
+				}
+			}
+		}
+
+		if (lastValue != 0) {
+			boardOut[y][writeIndex] = lastValue;
+			xOut[y][lastX] = writeIndex;
+			writeIndex--;
+		}
+
+		for (int x = writeIndex; x >= 0; x--) {
+			boardOut[y][x] = 0;
 		}
 	}
 }
 
 static void slideBoardDown(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
+
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
 			boardOut[y][x] = board[y][x];
@@ -108,29 +180,50 @@ static void slideBoardDown(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE]
 			yOut[y][x] = y;
 		}
 	}
+
 	for (int x = 0; x < SIZE; x++) {
-		for (int t = SIZE - 1; t >= 0; --t) {
-			if (boardOut[t][x] == 0) continue;
-			for (int b = t + 1; b < SIZE; b++) {
-				if (boardOut[b][x] == 0) {
-					yOut[t][x] = b;
-				} else if (boardOut[b][x] == boardOut[t][x]) {
-					yOut[t][x] = b;
-					boardOut[t][x] *= 2;
-					break;
+
+		int writeIndex = SIZE - 1;
+		int lastValue = 0;
+		int lastY = -1;
+
+		for (int y = SIZE - 1; y >= 0; y--) {
+			if (boardOut[y][x] != 0) {
+				if (lastValue == 0) {
+					// First tile in the row
+					lastValue = boardOut[y][x];
+					lastY = y;
+				} else if (lastValue == boardOut[y][x]) {
+					// Merge tiles
+					boardOut[writeIndex][x] = lastValue * 2;
+					yOut[lastY][x] = writeIndex;
+					yOut[y][x] = writeIndex;
+					lastValue = 0;
+					writeIndex--;
 				} else {
-					break;
+					boardOut[writeIndex][x] = lastValue;
+					yOut[lastY][x] = writeIndex;
+					lastValue = boardOut[y][x];
+					lastY = y;
+					writeIndex--;
 				}
 			}
-			int temp = boardOut[t][x];
-			boardOut[t][x] = 0;
-			boardOut[yOut[t][x]][xOut[t][x]] = temp;
+		}
+
+		if (lastValue != 0) {
+			boardOut[writeIndex][x] = lastValue;
+			yOut[lastY][x] = writeIndex;
+			writeIndex--;
+		}
+
+		for (int y = writeIndex; y >= 0; y--) {
+			boardOut[y][x] = 0;
 		}
 	}
 }
 
+static void slideBoardUp(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
 
-static void slideBoardRight(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
 			boardOut[y][x] = board[y][x];
@@ -138,52 +231,41 @@ static void slideBoardRight(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE
 			yOut[y][x] = y;
 		}
 	}
-	for (int y = 0; y < SIZE; y++) {
-		for (int l = SIZE - 1; l >= 0; --l) {
-			if (boardOut[y][l] == 0) continue;
-			for (int r = l + 1; r < SIZE; r++) {
-				if (boardOut[y][r] == 0) {
-					xOut[y][l] = r;
-				} else if (boardOut[y][r] == boardOut[y][l]) {
-					xOut[y][l] = r;
-					boardOut[y][l] *= 2;
-					break;
-				} else {
-					break;
-				}
-			}
-			int temp = boardOut[y][l];
-			boardOut[y][l] = 0;
-			boardOut[yOut[y][l]][xOut[y][l]] = temp;
-		}
-	}
-}
 
-static void slideBoardLeft(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
-	for (int y = 0; y < SIZE; y++) {
-		for (int x = 0; x < SIZE; x++) {
-			boardOut[y][x] = board[y][x];
-			xOut[y][x] = x;
-			yOut[y][x] = y;
-		}
-	}
-	for (int y = 0; y < SIZE; y++) {
-		for (int r = 0; r < SIZE; r++) {
-			if (boardOut[y][r] == 0) continue;
-			for (int l = r - 1; l >= 0; --l) {
-				if (boardOut[y][l] == 0) {
-					xOut[y][r] = l;
-				} else if (boardOut[y][l] == boardOut[y][r]) {
-					xOut[y][r] = l;
-					boardOut[y][r] *= 2;
-					break;
+	for (int x = 0; x < SIZE; x++) {
+		int writeIndex = 0;
+		int lastValue = 0;
+		int lastY = -1;
+
+		for (int y = 0; y < SIZE; y++) {
+			if (boardOut[y][x] != 0) {
+				if (lastValue == 0) {
+					lastValue = boardOut[y][x];
+					lastY = y;
+				} else if (lastValue == boardOut[y][x]) {
+					boardOut[writeIndex][x] = lastValue * 2;
+					yOut[lastY][x] = writeIndex;
+					yOut[y][x] = writeIndex;
+					lastValue = 0;
+					writeIndex++;
 				} else {
-					break;
+					boardOut[writeIndex][x] = lastValue;
+					yOut[lastY][x] = writeIndex;
+					lastValue = boardOut[y][x];
+					lastY = y;
+					writeIndex++;
 				}
 			}
-			int temp = boardOut[y][r];
-			boardOut[y][r] = 0;
-			boardOut[yOut[y][r]][xOut[y][r]] = temp;
+		}
+
+		if (lastValue != 0) {
+			boardOut[writeIndex][x] = lastValue;
+			yOut[lastY][x] = writeIndex;
+			writeIndex++;
+		}
+
+		for (int y = writeIndex; y < SIZE; y++) {
+			boardOut[y][x] = 0;
 		}
 	}
 }
