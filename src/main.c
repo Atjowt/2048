@@ -9,45 +9,184 @@
 #define SIZE 4
 
 typedef enum {
-	DIR_RIGHT,
-	DIR_LEFT,
-	DIR_UP,
-	DIR_DOWN,
-} Direction;
+	TILE_EMPTY,
+	TILE_2,
+	TILE_4,
+	TILE_8,
+	TILE_16,
+	TILE_32,
+	TILE_64,
+	TILE_128,
+	TILE_256,
+	TILE_512,
+	TILE_1024,
+	TILE_2048
+} TileValue;
 
-typedef enum {
-	MOVE_NONE,
-	MOVE_RIGHT,
-	MOVE_LEFT,
-	MOVE_UP,
-	MOVE_DOWN,
-} MoveRequest;
+typedef struct {
+	TileValue value;
+	int xsrc, ysrc;
+	float tspawn, tslide;
+} Tile;
 
 static float easeOutCubic(float t) {
 	return 1.0 - (1.0 - t) * (1.0 - t) * (1.0 - t);
 }
 
-static Color getColor(int tile) {
-	return ColorFromHSV(tile * 10.0 * PI, 0.3, 0.9);
-	// switch (tile) {
-	// 	case 2: return ORANGE;
-	// 	case 4: return YELLOW;
-	// 	case 8: return GREEN;
-	// 	case 16: return BLUE;
-	// 	case 32: return PURPLE;
-	// 	case 64: return PINK;
-	// 	case 128: return LIME;
-	// 	case 256: return SKYBLUE;
-	// 	case 512: return DARKBLUE;
-	// 	case 1024: return DARKGREEN;
-	// 	case 2048: return GOLD;
-	// }
+static Color getColor(TileValue val) {
+	switch (val) {
+		case TILE_2:      return ColorFromHSV(225.0, 0.4, 0.3);   // dusty blue
+		case TILE_4:      return ColorFromHSV(210.0, 0.45, 0.32); // steely blue
+		case TILE_8:      return ColorFromHSV(200.0, 0.5, 0.35);  // dark cyan-blue
+		case TILE_16:     return ColorFromHSV(185.0, 0.5, 0.33);  // cold teal
+		case TILE_32:     return ColorFromHSV(170.0, 0.5, 0.31);  // murky aquamarine
+		case TILE_64:     return ColorFromHSV(255.0, 0.45, 0.36); // deep indigo
+		case TILE_128:    return ColorFromHSV(270.0, 0.5, 0.38);  // moody violet
+		case TILE_256:    return ColorFromHSV(285.0, 0.5, 0.4);   // soft purple
+		case TILE_512:    return ColorFromHSV(300.0, 0.5, 0.38);  // orchid
+		case TILE_1024:   return ColorFromHSV(315.0, 0.45, 0.35); // pink-magenta
+		case TILE_2048:   return ColorFromHSV(240.0, 0.5, 0.42);  // dark royal blue
+		case TILE_EMPTY:  exit(1);
+	}
 }
 
-bool checkIfAnimating(float t[SIZE][SIZE]) {
+static void slideLeft(Tile board[SIZE][SIZE]) {
+	for (int y = 0; y < SIZE; y++) {
+		int left = 0;
+		for (int x = 0; x < SIZE; x++) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[y][left].value = board[y][x].value;
+			board[y][left].xsrc = x;
+			left++;
+		}
+		for (int x = left; x < SIZE; x++) {
+			board[y][x].value = TILE_EMPTY;
+		}
+		for (int x = 0; x < left - 1; x++) {
+			if (board[y][x].value == board[y][x + 1].value) {
+				board[y][x].value++;
+				board[y][x + 1].value = TILE_EMPTY;
+				board[y][x].xsrc = board[y][x + 1].xsrc;
+				x++;
+			}
+		}
+		int final = 0;
+		for (int x = 0; x < left; x++) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[y][final].value = board[y][x].value;
+			board[y][final].xsrc = board[y][x].xsrc;
+			final++;
+		}
+		for (int x = final; x < SIZE; x++) {
+			board[y][x].value = TILE_EMPTY;
+		}
+	}
+}
+
+static void slideRight(Tile board[SIZE][SIZE]) {
+	for (int y = 0; y < SIZE; y++) {
+		int right = SIZE - 1;
+		for (int x = SIZE - 1; x >= 0; --x) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[y][right].value = board[y][x].value;
+			board[y][right].xsrc = x;
+			--right;
+		}
+		for (int x = right; x >= 0; --x) {
+			board[y][x].value = TILE_EMPTY;
+		}
+		for (int x = SIZE - 1; x > right + 1; --x) {
+			if (board[y][x].value == board[y][x - 1].value) {
+				board[y][x].value++;
+				board[y][x - 1].value = TILE_EMPTY;
+				board[y][x].xsrc = board[y][x - 1].xsrc;
+				x++;
+			}
+		}
+		int final = SIZE - 1;
+		for (int x = SIZE - 1; x > right; --x) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[y][final].value = board[y][x].value;
+			board[y][final].xsrc = board[y][x].xsrc;
+			--final;
+		}
+		for (int x = final; x >= 0; --x) {
+			board[y][x].value = TILE_EMPTY;
+		}
+	}
+}
+
+static void slideUp(Tile board[SIZE][SIZE]) {
+	for (int x = 0; x < SIZE; x++) {
+		int top = 0;
+		for (int y = 0; y < SIZE; y++) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[top][x].value = board[y][x].value;
+			board[top][x].ysrc = y;
+			top++;
+		}
+		for (int y = top; y < SIZE; y++) {
+			board[y][x].value = TILE_EMPTY;
+		}
+		for (int y = 0; y < top - 1; y++) {
+			if (board[y][x].value == board[y + 1][x].value) {
+				board[y][x].value++;
+				board[y + 1][x].value = TILE_EMPTY;
+				board[y][x].ysrc = board[y + 1][x].ysrc;
+				y++;
+			}
+		}
+		int final = 0;
+		for (int y = 0; y < top; y++) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[final][x].value = board[y][x].value;
+			board[final][x].ysrc = board[y][x].ysrc;
+			final++;
+		}
+		for (int y = final; y < SIZE; y++) {
+			board[y][x].value = TILE_EMPTY;
+		}
+	}
+}
+
+static void slideDown(Tile board[SIZE][SIZE]) {
+	for (int x = 0; x < SIZE; x++) {
+		int bottom = SIZE - 1;
+		for (int y = SIZE - 1; y >= 0; --y) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[bottom][x].value = board[y][x].value;
+			board[bottom][x].ysrc = y;
+			--bottom;
+		}
+		for (int y = bottom; y >= 0; --y) {
+			board[y][x].value = TILE_EMPTY;
+		}
+		for (int y = SIZE - 1; y > bottom + 1; --y) {
+			if (board[y][x].value == board[y - 1][x].value) {
+				board[y][x].value++;
+				board[y - 1][x].value = TILE_EMPTY;
+				board[y][x].ysrc = board[y - 1][x].ysrc;
+				y++;
+			}
+		}
+		int final = SIZE - 1;
+		for (int y = SIZE - 1; y > bottom; --y) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			board[final][x].value = board[y][x].value;
+			board[final][x].ysrc = board[y][x].ysrc;
+			--final;
+		}
+		for (int y = final; y >= 0; --y) {
+			board[y][x].value = TILE_EMPTY;
+		}
+	}
+}
+
+static bool anyMoved(Tile board[SIZE][SIZE]) {
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
-			if (t[y][x] < 1.0) {
+			if (board[y][x].value == TILE_EMPTY) continue;
+			if (board[y][x].xsrc != x || board[y][x].ysrc != y) {
 				return true;
 			}
 		}
@@ -55,320 +194,192 @@ bool checkIfAnimating(float t[SIZE][SIZE]) {
 	return false;
 }
 
-static void slideBoardLeft(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
-
+static void boardCopy(const Tile board[SIZE][SIZE], Tile copy[SIZE][SIZE]) {
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
-			boardOut[y][x] = board[y][x];
-			xOut[y][x] = x;
-			yOut[y][x] = y;
-		}
-	}
-
-	for (int y = 0; y < SIZE; y++) {
-		int writeIndex = 0;
-		int lastValue = 0;
-		int lastX = -1;
-
-		for (int x = 0; x < SIZE; x++) {
-			if (boardOut[y][x] != 0) {
-				if (lastValue == 0) {
-					lastValue = boardOut[y][x];
-					lastX = x;
-				} else if (lastValue == boardOut[y][x]) {
-					boardOut[y][writeIndex] = lastValue * 2;
-					xOut[y][lastX] = writeIndex;
-					xOut[y][x] = writeIndex;
-					lastValue = 0;
-					writeIndex++;
-				} else {
-					boardOut[y][writeIndex] = lastValue;
-					xOut[y][lastX] = writeIndex;
-					lastValue = boardOut[y][x];
-					lastX = x;
-					writeIndex++;
-				}
-			}
-		}
-
-		if (lastValue != 0) {
-			boardOut[y][writeIndex] = lastValue;
-			xOut[y][lastX] = writeIndex;
-			writeIndex++;
-		}
-
-		for (int x = writeIndex; x < SIZE; x++) {
-			boardOut[y][x] = 0;
+			copy[y][x] = board[y][x];
 		}
 	}
 }
 
-static void slideBoardRight(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
-
+static void boardCommit(Tile board[SIZE][SIZE]) {
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
-			boardOut[y][x] = board[y][x];
-			xOut[y][x] = x;
-			yOut[y][x] = y;
-		}
-	}
-
-	for (int y = 0; y < SIZE; y++) {
-
-		int writeIndex = SIZE - 1;
-		int lastValue = 0;
-		int lastX = -1;
-
-		for (int x = SIZE - 1; x >= 0; x--) {
-			if (boardOut[y][x] != 0) {
-				if (lastValue == 0) {
-					lastValue = boardOut[y][x];
-					lastX = x;
-				} else if (lastValue == boardOut[y][x]) {
-					boardOut[y][writeIndex] = lastValue * 2;
-					xOut[y][lastX] = writeIndex;
-					xOut[y][x] = writeIndex;
-					lastValue = 0;
-					writeIndex--;
-				} else {
-					boardOut[y][writeIndex] = lastValue;
-					xOut[y][lastX] = writeIndex;
-					lastValue = boardOut[y][x];
-					lastX = x;
-					writeIndex--;
-				}
-			}
-		}
-
-		if (lastValue != 0) {
-			boardOut[y][writeIndex] = lastValue;
-			xOut[y][lastX] = writeIndex;
-			writeIndex--;
-		}
-
-		for (int x = writeIndex; x >= 0; x--) {
-			boardOut[y][x] = 0;
+			board[y][x].xsrc = x;
+			board[y][x].ysrc = y;
+			board[y][x].tslide = 1.0;
+			board[y][x].tspawn = 1.0;
 		}
 	}
 }
 
-static void slideBoardDown(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
-
+static bool isWon(const Tile board[SIZE][SIZE]) {
 	for (int y = 0; y < SIZE; y++) {
 		for (int x = 0; x < SIZE; x++) {
-			boardOut[y][x] = board[y][x];
-			xOut[y][x] = x;
-			yOut[y][x] = y;
-		}
-	}
-
-	for (int x = 0; x < SIZE; x++) {
-
-		int writeIndex = SIZE - 1;
-		int lastValue = 0;
-		int lastY = -1;
-
-		for (int y = SIZE - 1; y >= 0; y--) {
-			if (boardOut[y][x] != 0) {
-				if (lastValue == 0) {
-					lastValue = boardOut[y][x];
-					lastY = y;
-				} else if (lastValue == boardOut[y][x]) {
-					boardOut[writeIndex][x] = lastValue * 2;
-					yOut[lastY][x] = writeIndex;
-					yOut[y][x] = writeIndex;
-					lastValue = 0;
-					writeIndex--;
-				} else {
-					boardOut[writeIndex][x] = lastValue;
-					yOut[lastY][x] = writeIndex;
-					lastValue = boardOut[y][x];
-					lastY = y;
-					writeIndex--;
-				}
+			if (board[y][x].value == TILE_2048) {
+				return true;
 			}
 		}
-
-		if (lastValue != 0) {
-			boardOut[writeIndex][x] = lastValue;
-			yOut[lastY][x] = writeIndex;
-			writeIndex--;
-		}
-
-		for (int y = writeIndex; y >= 0; y--) {
-			boardOut[y][x] = 0;
-		}
 	}
+	return false;
 }
 
-static void slideBoardUp(const int board[SIZE][SIZE], int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
+static bool isLost(const Tile board[SIZE][SIZE]) {
 
-	for (int y = 0; y < SIZE; y++) {
-		for (int x = 0; x < SIZE; x++) {
-			boardOut[y][x] = board[y][x];
-			xOut[y][x] = x;
-			yOut[y][x] = y;
-		}
-	}
+	Tile result[SIZE][SIZE];
 
-	for (int x = 0; x < SIZE; x++) {
-		int writeIndex = 0;
-		int lastValue = 0;
-		int lastY = -1;
+	boardCopy(board, result);
+	boardCommit(result);
+	slideLeft(result);
+	if (anyMoved(result)) return false;
 
-		for (int y = 0; y < SIZE; y++) {
-			if (boardOut[y][x] != 0) {
-				if (lastValue == 0) {
-					lastValue = boardOut[y][x];
-					lastY = y;
-				} else if (lastValue == boardOut[y][x]) {
-					boardOut[writeIndex][x] = lastValue * 2;
-					yOut[lastY][x] = writeIndex;
-					yOut[y][x] = writeIndex;
-					lastValue = 0;
-					writeIndex++;
-				} else {
-					boardOut[writeIndex][x] = lastValue;
-					yOut[lastY][x] = writeIndex;
-					lastValue = boardOut[y][x];
-					lastY = y;
-					writeIndex++;
-				}
-			}
-		}
+	boardCopy(board, result);
+	boardCommit(result);
+	slideRight(result);
+	if (anyMoved(result)) return false;
 
-		if (lastValue != 0) {
-			boardOut[writeIndex][x] = lastValue;
-			yOut[lastY][x] = writeIndex;
-			writeIndex++;
-		}
+	boardCopy(board, result);
+	boardCommit(result);
+	slideUp(result);
+	if (anyMoved(result)) return false;
 
-		for (int y = writeIndex; y < SIZE; y++) {
-			boardOut[y][x] = 0;
-		}
-	}
-}
+	boardCopy(board, result);
+	boardCommit(result);
+	slideDown(result);
+	if (anyMoved(result)) return false;
 
-static void slideBoard(const int board[SIZE][SIZE], Direction dir, int boardOut[SIZE][SIZE], int xOut[SIZE][SIZE], int yOut[SIZE][SIZE]) {
-	switch (dir) {
-		case DIR_RIGHT: slideBoardRight(board, boardOut, xOut, yOut); break;
-		case DIR_LEFT: slideBoardLeft(board, boardOut, xOut, yOut); break;
-		case DIR_DOWN: slideBoardDown(board, boardOut, xOut, yOut); break;
-		case DIR_UP: slideBoardUp(board, boardOut, xOut, yOut); break;
-	}
+	return true;
 }
 
 int main(void) {
 
-	int tilesToSpawn = 2;
-	MoveRequest requestedMove = MOVE_NONE;
-	bool isAnimating = false;
-	bool resultPending = false;
-
-	int board[SIZE][SIZE];
-	int boardNext[SIZE][SIZE];
-	int xNext[SIZE][SIZE];
-	int yNext[SIZE][SIZE];
-	float tAnimPos[SIZE][SIZE];
-	float tAnimSpawn[SIZE][SIZE];
-	for (int y = 0; y < SIZE; y++) {
-		for (int x = 0; x < SIZE; x++) {
-			board[y][x] = 0;
-			boardNext[y][x] = 0;
-			xNext[y][x] = x;
-			yNext[y][x] = y;
-			tAnimPos[y][x] = 0.0;
-			tAnimSpawn[y][x] = 0.0;
-		}
-	}
+	Tile board[SIZE][SIZE];
+	int tilesToSpawn;
+	bool won;
+	bool lost;
 
 	int screenWidth = 512;
 	int screenHeight = 512;
 
-	SetConfigFlags(FLAG_WINDOW_RESIZABLE);
-	SetConfigFlags(FLAG_MSAA_4X_HINT);
+	InitAudioDevice();
+
+	SetConfigFlags(FLAG_WINDOW_RESIZABLE | FLAG_MSAA_4X_HINT);
 	InitWindow(screenWidth, screenHeight, "2048");
 	SetWindowMinSize(256, 256);
 
-	Font font = LoadFontEx("Jua-Regular.ttf", 300, NULL, 0);
+	Font font = LoadFontEx("assets/font.ttf", 128, NULL, 0);
+	Sound slideSound = LoadSound("assets/slide.wav");
+	Music music = LoadMusicStream("assets/music.mp3");
+	PlayMusicStream(music);
+	SetMusicVolume(music, 0.2);
+	music.looping = true;
 
-	Color backgroundColor = ColorFromHSV(240.0, 0.2, 0.2);
-	float animSpeed = 4.0;
+	Color backgroundColor = ColorFromHSV(240.0, 0.4, 0.2);
+	float slidespeed = 4.0;
+	float spawnspeed = 4.0;
+
+	bool reset = true;
 
 	while (!WindowShouldClose()) {
 
+		UpdateMusicStream(music);
+
+		float dt = GetFrameTime();
+
+		if (reset) {
+			reset = false;
+			won = false;
+			lost = false;
+			for (int y = 0; y < SIZE; y++) {
+				for (int x = 0; x < SIZE; x++) {
+					board[y][x].value = TILE_EMPTY;
+					board[y][x].xsrc = x;
+					board[y][x].ysrc = y;
+					board[y][x].tspawn = 0.0;
+					board[y][x].tslide = 1.0;
+				}
+			}
+			tilesToSpawn = 2;
+		}
+
 		while (tilesToSpawn > 0) {
+			--tilesToSpawn;
 			int x, y;
 			do {
 				x = GetRandomValue(0, SIZE - 1);
 				y = GetRandomValue(0, SIZE - 1);
-			} while (board[y][x] != 0);
-			board[y][x] = GetRandomValue(1, 10) < 10 ? 2 : 4;
-			tAnimSpawn[y][x] = 0.0;
-			tilesToSpawn -= 1;
+			} while (board[y][x].value != TILE_EMPTY);
+			board[y][x].value = GetRandomValue(1, 8) == 8 ? TILE_4 : TILE_2;
+			board[y][x].xsrc = x;
+			board[y][x].ysrc = y;
+			board[y][x].tspawn = 0.0;
+			board[y][x].tslide = 1.0;
 		}
 
-		if (requestedMove == MOVE_NONE) {
+		if (!won && !lost) {
+			if (isWon(board)) {
+				won = true;
+			} else if (isLost(board)) {
+				lost = true;
+			}
+		}
+
+		if (!won && !lost) {
+
 			int key = GetKeyPressed();
-			if (key == KEY_RIGHT) requestedMove = MOVE_RIGHT;
-			if (key == KEY_LEFT) requestedMove = MOVE_LEFT;
-			if (key == KEY_DOWN) requestedMove = MOVE_DOWN;
-			if (key == KEY_UP) requestedMove = MOVE_UP;
-		}
 
-		if (requestedMove != MOVE_NONE) {
-			if (resultPending) {
-				for (int y = 0; y < SIZE; y++) {
-					for (int x = 0; x < SIZE; x++) {
-						tAnimPos[y][x] = 1.0;
-						tAnimSpawn[y][x] = 1.0;
-					}
+			if (key != KEY_NULL) {
+
+				boardCommit(board);
+
+				bool hasResult = false;
+				Tile result[SIZE][SIZE];
+				boardCopy(board, result);
+				if (key == KEY_LEFT || key == KEY_A) {
+					slideLeft(result);
+					hasResult = true;
+				} else if (key == KEY_RIGHT || key == KEY_D) {
+					slideRight(result);
+					hasResult = true;
+				} else if (key == KEY_UP || key == KEY_W) {
+					slideUp(result);
+					hasResult = true;
+				} else if (key == KEY_DOWN || key == KEY_S) {
+					slideDown(result);
+					hasResult = true;
 				}
-			} else {
-				switch (requestedMove) {
-					case MOVE_NONE: break; // unreachable
-					case MOVE_RIGHT: slideBoard(board, DIR_RIGHT, boardNext, xNext, yNext); break;
-					case MOVE_LEFT: slideBoard(board, DIR_LEFT, boardNext, xNext, yNext); break;
-					case MOVE_UP: slideBoard(board, DIR_UP, boardNext, xNext, yNext); break;
-					case MOVE_DOWN: slideBoard(board, DIR_DOWN, boardNext, xNext, yNext); break;
-				}
-				for (int y = 0; y < SIZE; y++) {
-					for (int x = 0; x < SIZE; x++) {
-						tAnimPos[y][x] = 0.0;
-						if (boardNext[y][x] != board[y][x]) {
-							resultPending = true;
+				if (hasResult) {
+					if (anyMoved(result)) {
+						boardCopy(result, board);
+						for (int y = 0; y < SIZE; y++) {
+							for (int x = 0; x < SIZE; x++) {
+								board[y][x].tslide = 0.0;
+							}
 						}
+						SetSoundPitch(slideSound, 1.0 + 0.2 * (2.0 * 0.01 * GetRandomValue(1, 100) - 1.0));
+						SetSoundVolume(slideSound, 1.0 - 0.1 * (0.01 * GetRandomValue(1, 100)));
+						PlaySound(slideSound);
+						tilesToSpawn++;
 					}
 				}
-				requestedMove = MOVE_NONE;
 			}
 		}
 
-		isAnimating = checkIfAnimating(tAnimPos) || checkIfAnimating(tAnimSpawn);
-
-		if (!isAnimating && resultPending) {
-			for (int y = 0; y < SIZE; y++) {
-				for (int x = 0; x < SIZE; x++) {
-					board[y][x] = boardNext[y][x];
-					xNext[y][x] = x;
-					yNext[y][x] = y;
-				}
+		if (won || lost) {
+			if (IsKeyPressed(KEY_R)) {
+				reset = true;
 			}
-			tilesToSpawn += 1;
-			resultPending = false;
 		}
-
-		float deltaTime = GetFrameTime();
-
-		screenWidth = GetScreenWidth();
-		screenHeight = GetScreenHeight();
 
 		for (int y = 0; y < SIZE; y++) {
 			for (int x = 0; x < SIZE; x++) {
-				tAnimSpawn[y][x] = Clamp(tAnimSpawn[y][x] + animSpeed * deltaTime, 0.0, 1.0);
-				tAnimPos[y][x] = Clamp(tAnimPos[y][x] + animSpeed * deltaTime, 0.0, 1.0);
+				board[y][x].tslide = Clamp(board[y][x].tslide + slidespeed * dt, 0.0, 1.0);
+				board[y][x].tspawn = Clamp(board[y][x].tspawn + spawnspeed * dt, 0.0, 1.0);
 			}
 		}
+
+		screenWidth = GetScreenWidth();
+		screenHeight = GetScreenHeight();
 
 		BeginDrawing();
 		ClearBackground(backgroundColor);
@@ -376,48 +387,77 @@ int main(void) {
 		float tileWidth = (float)screenWidth / (float)SIZE;
 		float tileHeight = (float)screenHeight / (float)SIZE;
 
-		Vector2 tileSize = { tileWidth, tileHeight };
-
 		for (int y = 0; y < SIZE; y++) {
 			for (int x = 0; x < SIZE; x++) {
-				if (board[y][x] == 0) continue;
-				Vector2 start = { x, y };
-				Vector2 end = { xNext[y][x], yNext[y][x] };
-				// Vector2 pos = Vector2Multiply(end, tileSize);
-				float scale = easeOutCubic(tAnimSpawn[y][x]);
-				float slide = easeOutCubic(tAnimPos[y][x]);
-				Vector2 offset = {
-					tileWidth * (1.0 - scale) * 0.5,
-					tileHeight * (1.0 - scale) * 0.5,
+				TileValue value = board[y][x].value;
+				if (value == TILE_EMPTY) continue;
+				float scale = easeOutCubic(board[y][x].tspawn);
+				Vector2 tileSize = {
+					tileWidth * scale,
+					tileHeight * scale
 				};
-				Vector2 pos = Vector2Add(Vector2Multiply(Vector2Lerp(start, end, slide), tileSize), offset);
-				Vector2 size = Vector2Scale(tileSize, scale);
-				int value = board[y][x];
-				Color color = getColor(value);
-				Rectangle rect = {
-					.x = pos.x,
-					.y = pos.y,
-					.width = size.x,
-					.height = size.y,
+				Vector2 tileOffset = {
+					0.5 * (tileWidth - tileSize.x),
+					0.5 * (tileHeight - tileSize.y)
 				};
-				// DrawRectangleV(pos, size, color);
-				const char* text = TextFormat("%d", value);
-				float fontSize = fminf(size.x, size.y) * 0.36;
+				Vector2 srcPos = { board[y][x].xsrc * tileWidth, board[y][x].ysrc * tileHeight };
+				Vector2 dstPos = { x * tileWidth, y * tileHeight };
+				Vector2 tilePos = Vector2Add(tileOffset, Vector2Lerp(srcPos, dstPos, easeOutCubic(board[y][x].tslide)));
+				Color tileColor = getColor(value);
+				Rectangle tileRect = {
+					.x = tilePos.x,
+					.y = tilePos.y,
+					.width = tileSize.x,
+					.height = tileSize.y
+				};
+				const char* text = TextFormat("%d", 1 << value);
+				float fontSize = fminf(tileSize.x, tileSize.y) * 0.36;
 				Vector2 textSize = MeasureTextEx(font, text, fontSize, 0.0);
-				Vector2 textPos = {
-					pos.x + 0.5 * (size.x - textSize.x),
-					pos.y + 0.5 * (size.y - textSize.y),
+				Vector2 textOffset = {
+					0.5 * (tileSize.x - textSize.x),
+					0.5 * (tileSize.y - textSize.y)
 				};
-				DrawRectangleRounded(rect, 0.4, 8, color);
-				DrawTextEx(font, text, textPos, fontSize, 0.0, WHITE);
+				Vector2 textPos = {
+					tilePos.x + textOffset.x,
+					tilePos.y + textOffset.y,
+				};
+				Color textColor = WHITE;
+				DrawRectangleRounded(tileRect, 0.4, 8, tileColor);
+				DrawTextEx(font, text, textPos, fontSize, 0.0, textColor);
 			}
 		}
-		DrawFPS(4, 4);
+
+		if (won || lost) {
+			const char* text;
+			Color textColor;
+			if (won) {
+				text = "You won! :)\nPress R to play again";
+				textColor = ColorFromHSV(140.0, 0.2, 1.0);
+			}
+			if (lost) {
+				text = "You lost... :(\nPress R to try again";
+				textColor = ColorFromHSV(0.0, 0.2, 1.0);
+			}
+			float fontSize = fminf(screenWidth, screenHeight) * 0.084;
+			Vector2 textSize = MeasureTextEx(font, text, fontSize, 0.0);
+			Vector2 textPos = {
+				0.5 * screenWidth - 0.5 * textSize.x,
+				0.5 * screenHeight - 0.5 * textSize.y,
+			};
+			DrawTextEx(font, text, textPos, fontSize, 0.0, textColor);
+		}
+
+		// DrawFPS(4, 4);
 		EndDrawing();
 	}
 
-	UnloadFont(font);
+	StopMusicStream(music);
 
+	UnloadMusicStream(music);
+	UnloadFont(font);
+	UnloadSound(slideSound);
+
+	CloseAudioDevice();
 	CloseWindow();
 
 	return 0;

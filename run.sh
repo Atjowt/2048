@@ -1,2 +1,2 @@
 #!/usr/bin/env bash
-cmake -B build && make -C build && build/2048
+mkdir -p build && cmake -B build && cmake --build build --config Release && build/2048
