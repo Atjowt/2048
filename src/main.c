@@ -429,14 +429,11 @@ int main(void) {
 
 		if (won || lost) {
 			const char* text;
-			Color textColor;
 			if (won) {
 				text = "You won! :)\nPress R to play again";
-				textColor = ColorFromHSV(140.0, 0.2, 1.0);
 			}
 			if (lost) {
 				text = "You lost... :(\nPress R to try again";
-				textColor = ColorFromHSV(0.0, 0.2, 1.0);
 			}
 			float fontSize = fminf(screenWidth, screenHeight) * 0.084;
 			Vector2 textSize = MeasureTextEx(font, text, fontSize, 0.0);
@@ -444,6 +441,7 @@ int main(void) {
 				0.5 * screenWidth - 0.5 * textSize.x,
 				0.5 * screenHeight - 0.5 * textSize.y,
 			};
+			Color textColor = WHITE;
 			DrawTextEx(font, text, textPos, fontSize, 0.0, textColor);
 		}
 
