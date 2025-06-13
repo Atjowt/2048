@@ -1,5 +1,6 @@
 # 2048
 Classic 2048 game made using Raylib.
+Slide tiles using the arrow keys or WASD.
 
 ## Build & Run
 Build as usual with CMake:
