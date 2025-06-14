@@ -422,10 +422,8 @@ int main(void) {
 			}
 		}
 
-		if (won || lost) {
-			if (IsKeyPressed(KEY_R)) {
-				reset = true;
-			}
+		if (IsKeyPressed(KEY_R)) {
+			reset = true;
 		}
 
 		for (int y = 0; y < SIZE; y++) {
