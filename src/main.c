@@ -258,6 +258,7 @@ int main(void) {
 	bool won;
 	bool lost;
 
+
 	int screenWidth = 512;
 	int screenHeight = 512;
 
@@ -268,7 +269,7 @@ int main(void) {
 	SetWindowMinSize(256, 256);
 
 	Font font = LoadFontEx("assets/font.ttf", 128, NULL, 0);
-	Sound slideSound = LoadSound("assets/slide.wav");
+	Sound slideSound = LoadSound("assets/pop.wav");
 	Music music = LoadMusicStream("assets/music.mp3");
 	PlayMusicStream(music);
 	SetMusicVolume(music, 0.2);
@@ -277,6 +278,11 @@ int main(void) {
 	Color backgroundColor = ColorFromHSV(240.0, 0.4, 0.2);
 	float slidespeed = 4.0;
 	float spawnspeed = 4.0;
+
+	Vector2 dragStartPos;
+	Vector2 dragEndPos;
+	bool draggingMouse = false;
+	int dragPreviewDir = KEY_NULL;
 
 	bool reset = true;
 
@@ -326,25 +332,67 @@ int main(void) {
 
 		if (!won && !lost) {
 
+			int dragDir = KEY_NULL;
+
+			if (draggingMouse) {
+				if (IsMouseButtonPressed(MOUSE_RIGHT_BUTTON)) {
+					draggingMouse = false;
+				}
+				dragEndPos = GetMousePosition();
+				Vector2 dragDelta = Vector2Subtract(dragEndPos, dragStartPos);
+				// Vector2 dragDeltaScaled = Vector2Divide(dragDelta, (Vector2) { screenWidth, screenHeight });
+				float x = dragDelta.x;
+				float y = dragDelta.y;
+				float xmag = fabsf(x);
+				float ymag = fabsf(y);
+				dragPreviewDir = KEY_NULL;
+				float threshold = 32.0;
+				if (xmag > threshold || ymag > threshold) {
+					if (xmag > ymag) {
+						if (x < 0.0) {
+							dragPreviewDir = KEY_LEFT;
+						} else {
+							dragPreviewDir = KEY_RIGHT;
+						}
+					} else {
+						if (y < 0.0) {
+							dragPreviewDir = KEY_UP;
+						} else {
+							dragPreviewDir = KEY_DOWN;
+						}
+					}
+				}
+				if (IsMouseButtonReleased(MOUSE_LEFT_BUTTON)) {
+					dragDir = dragPreviewDir;
+					draggingMouse = false;
+				}
+			} else {
+				if (IsMouseButtonPressed(MOUSE_LEFT_BUTTON)) {
+					dragStartPos = GetMousePosition();
+					dragPreviewDir = KEY_NULL;
+					draggingMouse = true;
+				}
+			}
+
 			int key = GetKeyPressed();
 
-			if (key != KEY_NULL) {
+			if (key != KEY_NULL || dragDir != KEY_NULL) {
 
 				boardCommit(board);
 
 				bool hasResult = false;
 				Tile result[SIZE][SIZE];
 				boardCopy(board, result);
-				if (key == KEY_LEFT || key == KEY_A) {
+				if (key == KEY_LEFT || key == KEY_A || dragDir == KEY_LEFT) {
 					slideLeft(result);
 					hasResult = true;
-				} else if (key == KEY_RIGHT || key == KEY_D) {
+				} else if (key == KEY_RIGHT || key == KEY_D || dragDir == KEY_RIGHT) {
 					slideRight(result);
 					hasResult = true;
-				} else if (key == KEY_UP || key == KEY_W) {
+				} else if (key == KEY_UP || key == KEY_W || dragDir == KEY_UP) {
 					slideUp(result);
 					hasResult = true;
-				} else if (key == KEY_DOWN || key == KEY_S) {
+				} else if (key == KEY_DOWN || key == KEY_S || dragDir == KEY_DOWN) {
 					slideDown(result);
 					hasResult = true;
 				}
@@ -424,6 +472,28 @@ int main(void) {
 				Color textColor = WHITE;
 				DrawRectangleRounded(tileRect, 0.4, 8, tileColor);
 				DrawTextEx(font, text, textPos, fontSize, 0.0, textColor);
+			}
+		}
+
+		if (draggingMouse) {
+			// if (dragPreviewDir != KEY_NULL) {
+			// 	Vector2 dragDelta = Vector2Subtract(dragEndPos, dragStartPos);
+			// 	float a = atan2f(dragDelta.y, dragDelta.x);
+			// 	DrawCircleSector(dragStartPos, 128.0, a * RAD2DEG - 120.0, a * RAD2DEG + 120.0, 12, ColorAlpha(WHITE, 0.1));
+			// }
+			// DrawCircleGradient(dragStartPos.x, dragStartPos.y, 16.0, ColorAlpha(WHITE, 0.05), ColorAlpha(WHITE, 0.0));
+			// DrawCircleGradient(dragEndPos.x, dragEndPos.y, 16.0, ColorAlpha(WHITE, 0.05), ColorAlpha(WHITE, 0.0));
+			if (dragPreviewDir == KEY_LEFT) {
+				DrawRectangleGradientH(0, 0, screenWidth / 2, screenHeight, ColorAlpha(WHITE, 0.1), ColorAlpha(WHITE, 0.0));
+			}
+			if (dragPreviewDir == KEY_RIGHT) {
+				DrawRectangleGradientH(screenWidth / 2, 0, screenWidth, screenHeight, ColorAlpha(WHITE, 0.0), ColorAlpha(WHITE, 0.1));
+			}
+			if (dragPreviewDir == KEY_UP) {
+				DrawRectangleGradientV(0, 0, screenWidth, screenHeight / 2, ColorAlpha(WHITE, 0.1), ColorAlpha(WHITE, 0.0));
+			}
+			if (dragPreviewDir == KEY_DOWN) {
+				DrawRectangleGradientV(0, screenHeight / 2, screenWidth, screenHeight, ColorAlpha(WHITE, 0.0), ColorAlpha(WHITE, 0.1));
 			}
 		}
 
