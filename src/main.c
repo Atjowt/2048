@@ -271,6 +271,8 @@ int main(void) {
 	Font font = LoadFontEx("assets/font.ttf", 128, NULL, 0);
 	Sound slideSound = LoadSound("assets/pop.wav");
 	Sound stuckSound = LoadSound("assets/stuck.wav");
+	Sound winSound = LoadSound("assets/win.wav");
+	Sound loseSound = LoadSound("assets/lose.wav");
 	Music music = LoadMusicStream("assets/music.mp3");
 	PlayMusicStream(music);
 	SetMusicVolume(music, 0.2);
@@ -325,8 +327,10 @@ int main(void) {
 
 		if (!won && !lost) {
 			if (isWon(board)) {
+				PlaySound(winSound);
 				won = true;
 			} else if (isLost(board)) {
+				PlaySound(loseSound);
 				lost = true;
 			}
 		}
@@ -530,6 +534,8 @@ int main(void) {
 	UnloadFont(font);
 	UnloadSound(slideSound);
 	UnloadSound(stuckSound);
+	UnloadSound(winSound);
+	UnloadSound(loseSound);
 
 	CloseAudioDevice();
 	CloseWindow();
