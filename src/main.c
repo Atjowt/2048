@@ -270,6 +270,7 @@ int main(void) {
 
 	Font font = LoadFontEx("assets/font.ttf", 128, NULL, 0);
 	Sound slideSound = LoadSound("assets/pop.wav");
+	Sound stuckSound = LoadSound("assets/stuck.wav");
 	Music music = LoadMusicStream("assets/music.mp3");
 	PlayMusicStream(music);
 	SetMusicVolume(music, 0.2);
@@ -408,6 +409,10 @@ int main(void) {
 						SetSoundVolume(slideSound, 1.0 - 0.1 * (0.01 * GetRandomValue(1, 100)));
 						PlaySound(slideSound);
 						tilesToSpawn++;
+					} else {
+						SetSoundPitch(slideSound, 1.0 + 0.2 * (2.0 * 0.01 * GetRandomValue(1, 100) - 1.0));
+						SetSoundVolume(slideSound, 1.0 - 0.1 * (0.01 * GetRandomValue(1, 100)));
+						PlaySound(stuckSound);
 					}
 				}
 			}
@@ -524,6 +529,7 @@ int main(void) {
 	UnloadMusicStream(music);
 	UnloadFont(font);
 	UnloadSound(slideSound);
+	UnloadSound(stuckSound);
 
 	CloseAudioDevice();
 	CloseWindow();
