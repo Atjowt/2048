@@ -273,6 +273,7 @@ int main(void) {
 	Sound stuckSound = LoadSound("assets/stuck.wav");
 	Sound winSound = LoadSound("assets/win.wav");
 	Sound loseSound = LoadSound("assets/lose.wav");
+	Sound restartSound = LoadSound("assets/restart.wav");
 	Music music = LoadMusicStream("assets/music.mp3");
 	PlayMusicStream(music);
 	SetMusicVolume(music, 0.2);
@@ -414,8 +415,8 @@ int main(void) {
 						PlaySound(slideSound);
 						tilesToSpawn++;
 					} else {
-						SetSoundPitch(slideSound, 1.0 + 0.2 * (2.0 * 0.01 * GetRandomValue(1, 100) - 1.0));
-						SetSoundVolume(slideSound, 1.0 - 0.1 * (0.01 * GetRandomValue(1, 100)));
+						SetSoundPitch(stuckSound, 1.0 + 0.2 * (2.0 * 0.01 * GetRandomValue(1, 100) - 1.0));
+						SetSoundVolume(stuckSound, 1.0 - 0.1 * (0.01 * GetRandomValue(1, 100)));
 						PlaySound(stuckSound);
 					}
 				}
@@ -424,6 +425,9 @@ int main(void) {
 
 		if (IsKeyPressed(KEY_R)) {
 			reset = true;
+			SetSoundPitch(restartSound, 1.0 + 0.2 * (2.0 * 0.01 * GetRandomValue(1, 100) - 1.0));
+			SetSoundVolume(restartSound, 1.0 - 0.1 * (0.01 * GetRandomValue(1, 100)));
+			PlaySound(restartSound);
 		}
 
 		for (int y = 0; y < SIZE; y++) {
@@ -534,6 +538,7 @@ int main(void) {
 	UnloadSound(stuckSound);
 	UnloadSound(winSound);
 	UnloadSound(loseSound);
+	UnloadSound(restartSound);
 
 	CloseAudioDevice();
 	CloseWindow();
